@@ -129,7 +129,8 @@ export default function Admin() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border rounded py-2 text-sm w-32 mr-2" // 修改为 py-2 使高度一致
+              className="border rounded py-2 text-sm w-32 mr-2 text-center" // text-center 水平居中
+              style={{ lineHeight: '2rem' }} // line-height 和 input 高度相同，实现垂直居中
               placeholder="搜索"
              />
             <button
