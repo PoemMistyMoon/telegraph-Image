@@ -14,23 +14,29 @@ export default auth(async (req) => {
     const isLoginPage = pathname === LOGIN;
     const isAPI_CFILE = pathname.startsWith(API_CFILE);
 
+    // 如果是访问 /login 页面，直接放行
+    if (isLoginPage) return;
+
     if (enableAuthapi) {
-        if (!isAPI_CFILE && !isLoginPage && !isAuthenticated) {
-            // 未认证且不是 /api/cfile 或 /login 的请求，跳转到登录
+        if (!isAPI_CFILE && !isAuthenticated) {
+            // 如果启用了认证API，且不是访问 /api/cfile 路径，且未认证，跳转到登录页面
             return Response.redirect(new URL(LOGIN, nextUrl));
         }
     }
 
-    if (!isAuthenticated && !isLoginPage) {
-        // 备用保护
+    // 如果用户是 admin，放行所有页面
+    if (role === 'admin') {
+        return;
+    }
+
+    // 如果用户是普通用户（user），且访问 /admin 或 /api/admin 页面，跳转到登录页面
+    if (role === 'user' && (pathname.startsWith("/admin") || pathname.startsWith("/api/admin"))) {
         return Response.redirect(new URL(LOGIN, nextUrl));
     }
 
-    // 认证成功后的角色控制
-    if (role === 'user') {
-        if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-            return Response.redirect(new URL(LOGIN, nextUrl));
-        }
+    // 如果未认证，跳转到登录页面
+    if (!isAuthenticated) {
+        return Response.redirect(new URL(LOGIN, nextUrl));
     }
 
     return;
@@ -39,6 +45,6 @@ export default auth(async (req) => {
 // 使用静态 matcher 配置
 export const config = {
     matcher: [
-        "/((?!api/cfile/).*)",
+        "/((?!api/cfile/).*)", // 匹配所有路径，但排除 /api/cfile/*
     ],
 };
