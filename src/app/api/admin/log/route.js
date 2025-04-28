@@ -1,36 +1,40 @@
-export const runtime = 'edge';
-export async function POST(request) {
-  const { page, query } = await request.json();
+import { NextResponse } from "next/server";
+import { headers } from 'next/headers'
+import { getRequestContext } from '@cloudflare/next-on-pages';
 
+// 定义 CORS 头
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Max-Age': '86400', // 24小时
+  'Content-Type': 'application/json'
+};
+
+export const runtime = 'edge';
+
+export async function POST(request) {
+  // 获取客户端的请求上下文
+  const { env, cf, ctx } = getRequestContext();
+  
   try {
+    let { page, query } = await request.json();
+
+    // 如果提供了查询参数
     if (query) {
-      // 修改后的查询：在 tgimglog 和 imginfo 表的 url, referer, ip, time, rating, total 字段上进行模糊匹配
       const ps = env.IMG.prepare(`
-        SELECT tgimglog.*, imginfo.rating, imginfo.total 
-        FROM tgimglog 
-        JOIN imginfo ON tgimglog.url = imginfo.url 
-        WHERE tgimglog.url LIKE '%${query}%' 
-           OR tgimglog.referer LIKE '%${query}%' 
-           OR tgimglog.ip LIKE '%${query}%' 
-           OR tgimglog.time LIKE '%${query}%' 
-           OR imginfo.rating LIKE '%${query}%' 
-           OR imginfo.total LIKE '%${query}%' 
-           OR imginfo.time LIKE '%${query}%' 
-        ORDER BY tgimglog.id DESC 
-        LIMIT 10 OFFSET ${page} * 10`);
-      
+        SELECT tgimglog.id, tgimglog.url, tgimglog.referer, tgimglog.ip, tgimglog.time, imginfo.rating, imginfo.total
+        FROM tgimglog
+        JOIN imginfo ON tgimglog.url = imginfo.url
+        WHERE tgimglog.url LIKE '%${query}%'
+        ORDER BY tgimglog.id DESC
+        LIMIT 10 OFFSET ${page} * 10
+      `);
       const { results } = await ps.all();
       const total = await env.IMG.prepare(`
-        SELECT COUNT(*) as total 
-        FROM tgimglog 
-        JOIN imginfo ON tgimglog.url = imginfo.url 
-        WHERE tgimglog.url LIKE '%${query}%' 
-           OR tgimglog.referer LIKE '%${query}%' 
-           OR tgimglog.ip LIKE '%${query}%' 
-           OR tgimglog.time LIKE '%${query}%' 
-           OR imginfo.rating LIKE '%${query}%' 
-           OR imginfo.total LIKE '%${query}%' 
-           OR imginfo.time LIKE '%${query}%'`).first();
+        SELECT COUNT(*) as total
+        FROM tgimglog
+        WHERE url LIKE '%${query}%'
+      `).first();
 
       return Response.json({
         "code": 200,
@@ -38,17 +42,22 @@ export async function POST(request) {
         "message": "success",
         "data": results,
         "page": page,
-        "total": total.total,
+        "total": total.total
       });
     } else {
+      // 如果没有提供查询参数，返回所有数据
       const ps = env.IMG.prepare(`
-        SELECT tgimglog.*, imginfo.rating, imginfo.total 
-        FROM tgimglog 
-        JOIN imginfo ON tgimglog.url = imginfo.url 
-        ORDER BY tgimglog.id DESC 
-        LIMIT 10 OFFSET ${page} * 10`);
+        SELECT tgimglog.id, tgimglog.url, tgimglog.referer, tgimglog.ip, tgimglog.time, imginfo.rating, imginfo.total
+        FROM tgimglog
+        JOIN imginfo ON tgimglog.url = imginfo.url
+        ORDER BY tgimglog.id DESC
+        LIMIT 10 OFFSET ${page} * 10
+      `);
       const { results } = await ps.all();
-      const total = await env.IMG.prepare(`SELECT COUNT(*) as total FROM tgimglog`).first();
+      const total = await env.IMG.prepare(`
+        SELECT COUNT(*) as total
+        FROM tgimglog
+      `).first();
 
       return Response.json({
         "code": 200,
@@ -56,7 +65,7 @@ export async function POST(request) {
         "message": "success",
         "data": results,
         "page": page,
-        "total": total.total,
+        "total": total.total
       });
     }
   } catch (error) {
