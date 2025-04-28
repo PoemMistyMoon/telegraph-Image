@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 export async function POST(request) {
   const { page, query } = await request.json();
 
