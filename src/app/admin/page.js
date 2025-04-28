@@ -129,9 +129,9 @@ export default function Admin() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border rounded p-1 text-sm w-32 mr-2"
+              className="border rounded py-2 text-sm w-32 mr-2" // 修改为 py-2 使高度一致
               placeholder="搜索"
-            />
+             />
             <button
               type="submit"
               className="text-white px-4 py-2 text-base transition ease-in-out delay-150 bg-blue-500 hover:scale-110 hover:bg-indigo-500 duration-300 rounded"
