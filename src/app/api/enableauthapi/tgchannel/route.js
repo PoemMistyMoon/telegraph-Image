@@ -66,11 +66,14 @@ export async function POST(request) {
 		let responseData = await res_img.json();
 		const fileData = await getFile(responseData);
 
-		const data = {
-			"url": `${req_url.origin}/api/cfile/${fileData.file_id}`,
-			"code": 200,
-			"name": fileData.file_name
-		}
+		const customDomain = env.CUSTOM_DOMAIN || req_url.origin; // 先尝试从环境变量中获取，如果没有，则回退为请求的原始域名
+
+                const data = {
+                  "url": `${customDomain}/api/cfile/${fileData.file_id}`,
+                  "code": 200,
+                  "name": fileData.file_name
+                }
+		
 		if (!env.IMG) {
 			data.env_img = "null"
 			return Response.json({
