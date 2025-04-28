@@ -1,29 +1,36 @@
-export const runtime = 'edge';
-export async function POST(request) {
-  const { page, query } = await request.json();
+import { getRequestContext } from '@cloudflare/next-on-pages';
 
+// 定义 CORS 头
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Max-Age': '86400', // 24小时
+  'Content-Type': 'application/json'
+};
+
+export const runtime = 'edge';
+
+export async function POST(request) {
+  // 获取客户端的请求上下文
+  const { env, cf, ctx } = getRequestContext();
+  
   try {
+    let { page, query } = await request.json();
+
+    // 如果提供了查询参数
     if (query) {
-      // 修改后的查询：在 imginfo 表的 url, referer, ip, rating, total, time 字段上进行模糊匹配
       const ps = env.IMG.prepare(`
-        SELECT * FROM imginfo 
+        SELECT id, url, referer, ip, rating, total, time 
+        FROM imginfo 
         WHERE url LIKE '%${query}%' 
-           OR referer LIKE '%${query}%' 
-           OR ip LIKE '%${query}%' 
-           OR rating LIKE '%${query}%' 
-           OR total LIKE '%${query}%' 
-           OR time LIKE '%${query}%' 
-        LIMIT 10 OFFSET ${page} * 10`);
-      
+        LIMIT 10 OFFSET ${page} * 10
+      `);
       const { results } = await ps.all();
       const total = await env.IMG.prepare(`
-        SELECT COUNT(*) as total FROM imginfo 
-        WHERE url LIKE '%${query}%' 
-           OR referer LIKE '%${query}%' 
-           OR ip LIKE '%${query}%' 
-           OR rating LIKE '%${query}%' 
-           OR total LIKE '%${query}%' 
-           OR time LIKE '%${query}%'`).first();
+        SELECT COUNT(*) as total 
+        FROM imginfo 
+        WHERE url LIKE '%${query}%'
+      `).first();
 
       return Response.json({
         "code": 200,
@@ -31,12 +38,21 @@ export async function POST(request) {
         "message": "success",
         "data": results,
         "page": page,
-        "total": total.total,
+        "total": total.total
       });
     } else {
-      const ps = env.IMG.prepare(`SELECT * FROM imginfo ORDER BY id DESC LIMIT 10 OFFSET ${page} * 10`);
+      // 如果没有提供查询参数，返回所有数据
+      const ps = env.IMG.prepare(`
+        SELECT id, url, referer, ip, rating, total, time 
+        FROM imginfo 
+        ORDER BY id DESC 
+        LIMIT 10 OFFSET ${page} * 10
+      `);
       const { results } = await ps.all();
-      const total = await env.IMG.prepare(`SELECT COUNT(*) as total FROM imginfo`).first();
+      const total = await env.IMG.prepare(`
+        SELECT COUNT(*) as total 
+        FROM imginfo
+      `).first();
 
       return Response.json({
         "code": 200,
@@ -44,9 +60,10 @@ export async function POST(request) {
         "message": "success",
         "data": results,
         "page": page,
-        "total": total.total,
+        "total": total.total
       });
     }
+
   } catch (error) {
     return Response.json({
       "code": 500,
