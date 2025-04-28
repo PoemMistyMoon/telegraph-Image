@@ -20,6 +20,13 @@ export default auth(async (req) => {
   const isADMIN_PAGE = pathname.startsWith(ADMIN_PAGE);
   const isAuthAPI = pathname.startsWith(AUTH_API);
 
+  if (isAuthenticated) {
+    // 如果已经登录，还访问/login，跳转到根目录
+    if (pathname === LOGIN) {
+      return Response.redirect(new URL(ROOT, nextUrl));
+    }
+  }
+
   if (!isAuthenticated) {
     if (isPublicRoute) {
       // 允许访问 /login 和 /api/cfile
@@ -44,20 +51,18 @@ export default auth(async (req) => {
 
   // 已登录的情况
   if (role === 'admin') {
-    // 管理员可以访问任何页面
     return;
   }
 
   if (role === 'user') {
     if (isAPI_ADMIN || isADMIN_PAGE) {
-      // 普通用户不能访问管理接口或后台页面
       const redirectUrl = new URL(LOGIN, nextUrl);
       redirectUrl.searchParams.set('callbackUrl', ROOT); // 跳首页
       return Response.redirect(redirectUrl);
     }
   }
 
-  // 其他角色，或者异常情况，跳登录
+  // 其他角色或者异常情况
   return;
 })
 
