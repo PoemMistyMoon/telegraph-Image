@@ -129,9 +129,9 @@ export default function Admin() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border rounded py-2 text-sm w-32 mr-2 pl-2"  // 添加 pl-2 增加左侧内边距
+              className="border rounded py-2 text-sm w-32 mr-2 pl-2 pr-2"  // 添加 pl-2 和 pr-2，确保左右都有边距
               placeholder="搜索"
-             />
+            />
             <button
               type="submit"
               className="text-white px-4 py-2 text-base transition ease-in-out delay-150 bg-blue-500 hover:scale-110 hover:bg-indigo-500 duration-300 rounded"
