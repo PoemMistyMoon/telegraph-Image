@@ -1,37 +1,40 @@
 import { getRequestContext } from '@cloudflare/next-on-pages';
 
-// 定义 CORS 头
+// ...
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Max-Age': '86400', // 24小时
+  'Access-Control-Max-Age': '86400', // 24 hours
   'Content-Type': 'application/json'
 };
 
 export const runtime = 'edge';
-
 export async function POST(request) {
-  // 获取客户端的请求上下文
+  // 获取客户端的IP地址
   const { env, cf, ctx } = getRequestContext();
-  
   try {
-    let { page, query } = await request.json();
+    let { page, query } = await request.json()
 
-    // 如果提供了查询参数
     if (query) {
       const ps = env.IMG.prepare(`
-        SELECT id, url, referer, ip, rating, total, time 
-        FROM imginfo 
+        SELECT * FROM imginfo 
         WHERE url LIKE '%${query}%' 
+        OR referer LIKE '%${query}%' 
+        OR ip LIKE '%${query}%' 
+        OR time LIKE '%${query}%' 
+        OR id LIKE '%${query}%' 
         LIMIT 10 OFFSET ${page} * 10
       `);
-      const { results } = await ps.all();
+      const { results } = await ps.all()
       const total = await env.IMG.prepare(`
-        SELECT COUNT(*) as total 
-        FROM imginfo 
-        WHERE url LIKE '%${query}%'
-      `).first();
-
+        SELECT COUNT(*) as total FROM imginfo 
+        WHERE url LIKE '%${query}%' 
+        OR referer LIKE '%${query}%' 
+        OR ip LIKE '%${query}%' 
+        OR time LIKE '%${query}%' 
+        OR id LIKE '%${query}%'
+      `).first()
       return Response.json({
         "code": 200,
         "success": true,
@@ -41,19 +44,9 @@ export async function POST(request) {
         "total": total.total
       });
     } else {
-      // 如果没有提供查询参数，返回所有数据
-      const ps = env.IMG.prepare(`
-        SELECT id, url, referer, ip, rating, total, time 
-        FROM imginfo 
-        ORDER BY id DESC 
-        LIMIT 10 OFFSET ${page} * 10
-      `);
-      const { results } = await ps.all();
-      const total = await env.IMG.prepare(`
-        SELECT COUNT(*) as total 
-        FROM imginfo
-      `).first();
-
+      const ps = env.IMG.prepare(`SELECT * FROM imginfo ORDER BY id DESC LIMIT 10 OFFSET ${page} * 10`);
+      const { results } = await ps.all()
+      const total = await env.IMG.prepare(`SELECT COUNT(*) as total FROM imginfo`).first()
       return Response.json({
         "code": 200,
         "success": true,
@@ -63,7 +56,6 @@ export async function POST(request) {
         "total": total.total
       });
     }
-
   } catch (error) {
     return Response.json({
       "code": 500,
@@ -73,6 +65,6 @@ export async function POST(request) {
     }, {
       status: 500,
       headers: corsHeaders,
-    });
+    })
   }
 }
