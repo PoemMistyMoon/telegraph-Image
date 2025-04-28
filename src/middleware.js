@@ -9,28 +9,30 @@ export default auth(async (req) => {
     const role = req?.auth?.user?.role;
     const isAuthenticated = !!req.auth;
 
-    const isAPI_CFILE = nextUrl.pathname.startsWith(API_CFILE);
+    const pathname = nextUrl.pathname;
+
+    const isLoginPage = pathname === LOGIN;
+    const isAPI_CFILE = pathname.startsWith(API_CFILE);
 
     if (enableAuthapi) {
-        if (!isAPI_CFILE && !isAuthenticated) {
-            // 未认证且不是/api/cfile时，跳转到登录
+        if (!isAPI_CFILE && !isLoginPage && !isAuthenticated) {
+            // 未认证且不是 /api/cfile 或 /login 的请求，跳转到登录
             return Response.redirect(new URL(LOGIN, nextUrl));
         }
     }
 
-    if (!isAuthenticated) {
-        // 备用保护（通常用不上，因为上面enableAuthapi已经处理了）
+    if (!isAuthenticated && !isLoginPage) {
+        // 备用保护
         return Response.redirect(new URL(LOGIN, nextUrl));
     }
 
-    // 认证成功后的角色控制（比如普通用户限制访问后台）
+    // 认证成功后的角色控制
     if (role === 'user') {
-        if (nextUrl.pathname.startsWith("/admin") || nextUrl.pathname.startsWith("/api/admin")) {
+        if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
             return Response.redirect(new URL(LOGIN, nextUrl));
         }
     }
 
-    // 其他情况放行
     return;
 });
 
