@@ -20,53 +20,36 @@ export default auth(async (req) => {
   const isADMIN_PAGE = pathname.startsWith(ADMIN_PAGE);
   const isAuthAPI = pathname.startsWith(AUTH_API);
 
-  if (isAuthenticated) {
-    // 如果已经登录，还访问/login，跳转到根目录
-    if (pathname === LOGIN) {
-      return Response.redirect(new URL(ROOT, nextUrl));
-    }
+  // 已经登录还访问/login，就跳回 /
+  if (isAuthenticated && pathname === LOGIN) {
+    return Response.redirect(new URL(ROOT, nextUrl));
   }
 
+  // login和/api/cfile是公开的，允许访问
+  if (isPublicRoute) {
+    return;
+  }
+
+  // 未登录访问其他页面，直接跳到/login（不带callbackUrl）
   if (!isAuthenticated) {
-    if (isPublicRoute) {
-      // 允许访问 /login 和 /api/cfile
-      return;
-    }
-    if (isAPI_ADMIN) {
-      return Response.json(
-        { status: "fail", message: "You are not logged in by admin !", success: false },
-        { status: 401 },
-      )
-    }
-    if (isADMIN_PAGE || isAuthAPI) {
-      const redirectUrl = new URL(LOGIN, nextUrl);
-      redirectUrl.searchParams.set('callbackUrl', nextUrl.pathname);
-      return Response.redirect(redirectUrl);
-    }
-    // 其他页面未登录也跳到登录页
-    const redirectUrl = new URL(LOGIN, nextUrl);
-    redirectUrl.searchParams.set('callbackUrl', nextUrl.pathname);
-    return Response.redirect(redirectUrl);
+    return Response.redirect(new URL(LOGIN, nextUrl));
   }
 
-  // 已登录的情况
+  // 登录后根据角色做限制
   if (role === 'admin') {
     return;
   }
 
   if (role === 'user') {
     if (isAPI_ADMIN || isADMIN_PAGE) {
-      const redirectUrl = new URL(LOGIN, nextUrl);
-      redirectUrl.searchParams.set('callbackUrl', ROOT); // 跳首页
-      return Response.redirect(redirectUrl);
+      return Response.redirect(new URL(ROOT, nextUrl));
     }
   }
 
-  // 其他角色或者异常情况
   return;
 })
 
-// 静态拦截匹配规则
+// 静态拦截配置
 export const config = {
   matcher: [
     "/((?!_next|favicon.ico).*)",
