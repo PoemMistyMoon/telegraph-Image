@@ -4,7 +4,8 @@ const ROOT = '/';
 const PUBLIC_ROUTES = ['/'];
 const DEFAULT_REDIRECT = '/login';
 const LOGIN = '/login';
-const API_CFILE = "/api/cfile"; // 需要忽略认证的路径
+const API_ADMIN = "/api/admin";
+const ADMIN_PAGE = "/admin";
 const AUTH_API = "/api/enableauthapi";
 const enableAuthapi = process.env.ENABLE_AUTH_API === 'true';
 
@@ -12,56 +13,50 @@ export default auth(async (req) => {
     const { nextUrl } = req;
     const role = req?.auth?.user?.role;
     const isAuthenticated = !!req.auth;
-    const isRoot = nextUrl.pathname === ROOT;
-    const isCfileAPI = nextUrl.pathname.startsWith(API_CFILE); // 判断是否是 /api/cfile/* 路径
 
-    // 1. 访问根目录且未认证，返回未认证
+    const isRoot = nextUrl.pathname === ROOT; // 检查是否是根目录
+    const isAPI_ADMIN = nextUrl.pathname.startsWith(API_ADMIN);
+    const isADMIN_PAGE = nextUrl.pathname.startsWith(ADMIN_PAGE);
+    const isAuthAPI = nextUrl.pathname.startsWith(AUTH_API);
+
+    // 1. 根目录需要认证
     if (isRoot && !isAuthenticated) {
-        return Response.json(
-            { status: "fail", message: "You are not authenticated!", success: false },
-            { status: 401 }
-        );
+        return Response.redirect(new URL(LOGIN, nextUrl));
     }
 
-    // 2. 如果是访问 /api/cfile/* 路径，跳过认证检查
-    if (isCfileAPI) {
-        return;
-    }
-
-    // 3. 其他认证逻辑保持不变
+    // 2. 认证检查：未认证的情况
     if (!isAuthenticated) {
-        if (nextUrl.pathname.startsWith("/api/admin")) {
+        if (isAPI_ADMIN) {
             return Response.json(
                 { status: "fail", message: "You are not logged in by admin!", success: false },
-                { status: 401 },
+                { status: 401 }
             );
-        }
-        else if (nextUrl.pathname.startsWith("/admin")) {
-            return Response.redirect(new URL(LOGIN, nextUrl));
-        }
-        else if (nextUrl.pathname.startsWith(AUTH_API)) {
+        } else if (isADMIN_PAGE) {
+            return Response.redirect(new URL(LOGIN, nextUrl)); // 重定向到登录页
+        } else if (isAuthAPI) {
             if (enableAuthapi) {
                 return Response.json(
                     { status: "fail", message: "You are not logged in by user!", success: false },
                     { status: 401 }
                 );
             }
+            // 不做认证检查，继续执行
             else {
                 return;
             }
-        }
-        else {
+        } else {
             return;
         }
     }
 
+    // 3. 用户认证通过后的角色检查
     if (role === 'admin') {
-        return;
+        return; // 允许 admin 访问
     }
 
     if (role === 'user') {
-        if (nextUrl.pathname.startsWith("/api/admin") || nextUrl.pathname.startsWith("/admin")) {
-            return Response.redirect(new URL(LOGIN, nextUrl));
+        if (isAPI_ADMIN || isADMIN_PAGE) {
+            return Response.redirect(new URL(LOGIN, nextUrl)); // 如果是普通用户，访问 admin 路径会被重定向到登录
         }
     }
 });
@@ -71,6 +66,6 @@ export const config = {
     matcher: [
         "/admin/:path*",
         "/api/admin/:path*",
-        "/api/cfile/:path*", // 允许 /api/cfile/* 路径访问
+        "/api/enableauthapi/:path*"
     ],
 };
